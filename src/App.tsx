@@ -741,7 +741,7 @@ function App() {
           const url = data.audioUrl || 'https://fadhi690mk.github.io/myweddingalbum/bgm.mp3';
           setAudioUrl(url);
           setError('');
-          
+
 
           // Ensure audio context is ready
           if (!audioContext) {
@@ -963,7 +963,7 @@ function App() {
       <div className="w-full max-w-2xl bg-gray-800 rounded-lg shadow-xl p-6">
         <div className="flex items-center justify-center mb-6">
           <WaveformIcon className="w-8 h-8 text-blue-500 mr-2" />
-          <h1 className="text-2xl font-bold text-white">Audio Analyzer</h1>
+          <h1 className="text-2xl font-bold text-white">Audio Analyzer Test</h1>
         </div>
         
         <canvas 
