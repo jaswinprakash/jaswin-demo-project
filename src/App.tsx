@@ -1300,7 +1300,156 @@
 // export default App;
 
 
-import React, { useEffect, useRef, useState } from 'react';
+// import React, { useEffect, useRef, useState } from 'react';
+
+// function App() {
+//     const audioRef = useRef(null);
+//     const canvasRef = useRef(null);
+//     const [audioContext, setAudioContext] = useState(null);
+//     const [analyser, setAnalyser] = useState(null);
+//     const [audioSource, setAudioSource] = useState(null);
+//     const animationRef = useRef(null);
+//     const [isPlaying, setIsPlaying] = useState(false);
+
+//     const cleanupAudioNodes = () => {
+//         if (audioContext) {
+//             audioContext.close().catch(err => console.error('AudioContext close error:', err));
+//         }
+//         if (animationRef.current) {
+//             cancelAnimationFrame(animationRef.current);
+//         }
+//     };
+
+//     const calculateMetrics = (analyserNode) => {
+//         const bufferLength = analyserNode.frequencyBinCount;
+//         const dataArray = new Uint8Array(bufferLength);
+//         analyserNode.getByteFrequencyData(dataArray);
+
+//         const totalEnergy = dataArray.reduce((sum, value) => sum + value, 0);
+//         const amplitude = Math.max(...dataArray);
+//         const energy = totalEnergy / bufferLength;
+//         const frequencyIndex = dataArray.indexOf(amplitude);
+//         const frequency = (frequencyIndex * audioContext.sampleRate) / analyserNode.fftSize;
+
+//         return { frequency, amplitude, energy, totalEnergy };
+//     };
+
+//     const setupAudio = () => {
+//         if (!audioContext) {
+//             const context = new AudioContext();
+//             const analyserNode = context.createAnalyser();
+//             analyserNode.fftSize = 2048;
+//             setAudioContext(context);
+//             setAnalyser(analyserNode);
+
+//             const source = context.createMediaElementSource(audioRef.current);
+//             source.connect(analyserNode);
+//             analyserNode.connect(context.destination);
+//             setAudioSource(source);
+//         }
+//     };
+
+//     const visualizeAudio = () => {
+//         if (!analyser) return;
+
+//         const canvas = canvasRef.current;
+//         const ctx = canvas.getContext('2d');
+//         const bufferLength = analyser.frequencyBinCount;
+//         const dataArray = new Uint8Array(bufferLength);
+
+//         const draw = () => {
+//             if (!isPlaying || audioRef.current.ended) {
+//                 cancelAnimationFrame(animationRef.current);
+//                 return;
+//             }
+
+//             animationRef.current = requestAnimationFrame(draw);
+
+//             analyser.getByteFrequencyData(dataArray);
+//             const metrics = calculateMetrics(analyser);
+
+//             // Only send meaningful metrics
+//             if (metrics.amplitude > 0) {
+//                 try {
+//                     window.ReactNativeWebView.postMessage(JSON.stringify(metrics));
+//                 } catch (err) {
+//                     console.error('Failed to post metrics:', err);
+//                 }
+//             }
+
+//             ctx.clearRect(0, 0, canvas.width, canvas.height);
+//             const barWidth = canvas.width / bufferLength;
+//             let x = 0;
+
+//             for (let i = 0; i < bufferLength; i++) {
+//                 const barHeight = dataArray[i];
+//                 ctx.fillStyle = `rgb(${barHeight + 100}, 50, 50)`;
+//                 ctx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight / 2);
+//                 x += barWidth;
+//             }
+//         };
+
+//         draw();
+//     };
+
+//     useEffect(() => {
+//         const handleMessage = (event) => {
+//             try {
+//                 const data = JSON.parse(event.data);
+
+//                 if (data.type === 'audioLoaded') {
+//                     const audioUrl = data.audioUrl;
+
+//                     // Reset audio context and setup new source
+//                     if (audioContext) cleanupAudioNodes();
+//                     audioRef.current.src = audioUrl;
+//                     audioRef.current.crossOrigin = 'anonymous';
+//                     audioRef.current.play()
+//                         .then(() => {
+//                             setupAudio();
+//                             setIsPlaying(true);
+//                             visualizeAudio();
+//                         })
+//                         .catch(err => console.error('Audio play error:', err));
+//                 } else if (data.type === 'audioAction') {
+//                     switch (data.action) {
+//                         case 'stop':
+//                             if (audioRef.current) {
+//                                 audioRef.current.pause();
+//                                 audioRef.current.currentTime = 0;
+//                                 setIsPlaying(false);
+//                                 cancelAnimationFrame(animationRef.current);
+//                             }
+//                             break;
+//                         default:
+//                             break;
+//                     }
+//                 }
+//             } catch (err) {
+//                 console.error('Error processing message:', err);
+//             }
+//         };
+
+//         window.addEventListener('message', handleMessage);
+
+//         return () => {
+//             window.removeEventListener('message', handleMessage);
+//             cleanupAudioNodes();
+//         };
+//     }, [audioContext, analyser]);
+
+//     return (
+//         <div className="analyzer-app">
+//             <canvas ref={canvasRef} width={800} height={200} style={{ backgroundColor: '#000' }} />
+//             <audio ref={audioRef} />
+//         </div>
+//     );
+// }
+
+// export default App;
+
+
+import React, { useEffect, useRef, useState } from "react";
 
 function App() {
     const audioRef = useRef(null);
@@ -1313,35 +1462,28 @@ function App() {
 
     const cleanupAudioNodes = () => {
         if (audioContext) {
-            audioContext.close().catch(err => console.error('AudioContext close error:', err));
+            audioContext.close().catch((err) => console.error("AudioContext close error:", err));
         }
         if (animationRef.current) {
             cancelAnimationFrame(animationRef.current);
         }
     };
 
-    const calculateMetrics = (analyserNode) => {
-        const bufferLength = analyserNode.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-        analyserNode.getByteFrequencyData(dataArray);
-
-        const totalEnergy = dataArray.reduce((sum, value) => sum + value, 0);
-        const amplitude = Math.max(...dataArray);
-        const energy = totalEnergy / bufferLength;
-        const frequencyIndex = dataArray.indexOf(amplitude);
-        const frequency = (frequencyIndex * audioContext.sampleRate) / analyserNode.fftSize;
-
-        return { frequency, amplitude, energy, totalEnergy };
-    };
-
-    const setupAudio = () => {
-        if (!audioContext) {
-            const context = new AudioContext();
-            const analyserNode = context.createAnalyser();
-            analyserNode.fftSize = 2048;
+    const setupAudio = async () => {
+        // Ensure AudioContext is properly initialized and resumed
+        let context = audioContext;
+        if (!context) {
+            context = new AudioContext();
             setAudioContext(context);
-            setAnalyser(analyserNode);
+        } else if (context.state === "suspended") {
+            await context.resume(); // Resume suspended AudioContext
+        }
 
+        const analyserNode = context.createAnalyser();
+        analyserNode.fftSize = 2048; // High resolution for frequency data
+        setAnalyser(analyserNode);
+
+        if (!audioSource) {
             const source = context.createMediaElementSource(audioRef.current);
             source.connect(analyserNode);
             analyserNode.connect(context.destination);
@@ -1350,10 +1492,13 @@ function App() {
     };
 
     const visualizeAudio = () => {
-        if (!analyser) return;
+        if (!analyser) {
+            console.error("No analyser found!");
+            return;
+        }
 
         const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
+        const ctx = canvas.getContext("2d");
         const bufferLength = analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
 
@@ -1366,16 +1511,11 @@ function App() {
             animationRef.current = requestAnimationFrame(draw);
 
             analyser.getByteFrequencyData(dataArray);
-            const metrics = calculateMetrics(analyser);
 
-            // Only send meaningful metrics
-            if (metrics.amplitude > 0) {
-                try {
-                    window.ReactNativeWebView.postMessage(JSON.stringify(metrics));
-                } catch (err) {
-                    console.error('Failed to post metrics:', err);
-                }
-            }
+            // Log meaningful audio data to debug
+            const maxAmplitude = Math.max(...dataArray);
+            console.log("Max Amplitude:", maxAmplitude);
+            console.log("Data Array:", dataArray);
 
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const barWidth = canvas.width / bufferLength;
@@ -1392,55 +1532,62 @@ function App() {
         draw();
     };
 
+    const handleAudioAction = async (action, audioUrl = null) => {
+        try {
+            if (action === "play" && audioUrl) {
+                // Setup audio and play
+                audioRef.current.src = audioUrl;
+                audioRef.current.crossOrigin = "anonymous"; // Ensure CORS compliance
+
+                await setupAudio(); // Ensure AudioContext is set up
+
+                audioRef.current.play()
+                    .then(() => {
+                        setIsPlaying(true);
+                        visualizeAudio();
+                        console.log("Audio playing successfully");
+                    })
+                    .catch((err) => {
+                        console.error("Error playing audio:", err.message);
+                    });
+            } else if (action === "stop") {
+                // Stop playback
+                if (audioRef.current) {
+                    audioRef.current.pause();
+                    audioRef.current.currentTime = 0;
+                    setIsPlaying(false);
+                    cancelAnimationFrame(animationRef.current);
+                }
+            }
+        } catch (err) {
+            console.error("Error handling audio action:", err.message);
+        }
+    };
+
     useEffect(() => {
         const handleMessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
 
-                if (data.type === 'audioLoaded') {
-                    const audioUrl = data.audioUrl;
-
-                    // Reset audio context and setup new source
-                    if (audioContext) cleanupAudioNodes();
-                    audioRef.current.src = audioUrl;
-                    audioRef.current.crossOrigin = 'anonymous';
-                    audioRef.current.play()
-                        .then(() => {
-                            setupAudio();
-                            setIsPlaying(true);
-                            visualizeAudio();
-                        })
-                        .catch(err => console.error('Audio play error:', err));
-                } else if (data.type === 'audioAction') {
-                    switch (data.action) {
-                        case 'stop':
-                            if (audioRef.current) {
-                                audioRef.current.pause();
-                                audioRef.current.currentTime = 0;
-                                setIsPlaying(false);
-                                cancelAnimationFrame(animationRef.current);
-                            }
-                            break;
-                        default:
-                            break;
-                    }
+                if (data.type === "audioAction") {
+                    handleAudioAction(data.action, data.audioUrl);
                 }
             } catch (err) {
-                console.error('Error processing message:', err);
+                console.error("Error processing message:", err.message);
             }
         };
 
-        window.addEventListener('message', handleMessage);
+        window.addEventListener("message", handleMessage);
 
         return () => {
-            window.removeEventListener('message', handleMessage);
+            window.removeEventListener("message", handleMessage);
             cleanupAudioNodes();
         };
     }, [audioContext, analyser]);
 
     return (
         <div className="analyzer-app">
-            <canvas ref={canvasRef} width={800} height={200} style={{ backgroundColor: '#000' }} />
+            <canvas ref={canvasRef} width={800} height={200} style={{ backgroundColor: "#000" }} />
             <audio ref={audioRef} />
         </div>
     );
