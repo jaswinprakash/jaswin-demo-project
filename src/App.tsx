@@ -741,6 +741,7 @@ function App() {
           const url = data.audioUrl || 'https://fadhi690mk.github.io/myweddingalbum/bgm.mp3';
           setAudioUrl(url);
           setError('');
+          
 
           // Ensure audio context is ready
           if (!audioContext) {
