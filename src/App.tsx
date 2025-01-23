@@ -1020,6 +1020,120 @@
 
 
 
+// import React, { useEffect, useRef, useState } from 'react';
+
+// function App() {
+//   const audioRef = useRef(null);
+//   const canvasRef = useRef(null);
+//   const [audioContext, setAudioContext] = useState(null);
+//   const [analyser, setAnalyser] = useState(null);
+//   const animationRef = useRef(null);
+
+//   const cleanupAudioNodes = () => {
+//     if (audioContext) {
+//       audioContext.close().catch((err) => console.error('AudioContext close error:', err));
+//     }
+//     if (animationRef.current) {
+//       cancelAnimationFrame(animationRef.current);
+//     }
+//   };
+
+//   const calculateMetrics = (analyserNode) => {
+//     const bufferLength = analyserNode.frequencyBinCount;
+//     const dataArray = new Uint8Array(bufferLength);
+//     analyserNode.getByteFrequencyData(dataArray);
+
+//     const totalEnergy = dataArray.reduce((sum, value) => sum + value, 0);
+//     const amplitude = Math.max(...dataArray);
+//     const energy = totalEnergy / bufferLength;
+//     const frequencyIndex = dataArray.indexOf(amplitude);
+//     const frequency = (frequencyIndex * audioContext.sampleRate) / analyserNode.fftSize;
+
+//     return { frequency, amplitude, energy, totalEnergy };
+//   };
+
+//   const setupAudio = (audioUrl) => {
+//     if (audioContext) {
+//       cleanupAudioNodes();
+//     }
+
+//     const context = new AudioContext();
+//     const analyserNode = context.createAnalyser();
+//     analyserNode.fftSize = 2048;
+//     setAudioContext(context);
+//     setAnalyser(analyserNode);
+
+//     const source = context.createMediaElementSource(audioRef.current);
+//     source.connect(analyserNode);
+//     analyserNode.connect(context.destination);
+
+//     const canvas = canvasRef.current;
+//     const ctx = canvas.getContext('2d');
+//     const bufferLength = analyserNode.frequencyBinCount;
+
+//     const draw = () => {
+//       animationRef.current = requestAnimationFrame(draw);
+
+//       const metrics = calculateMetrics(analyserNode);
+//       try {
+//         window.ReactNativeWebView.postMessage(JSON.stringify(metrics));
+//       } catch (err) {
+//         console.error('Failed to post metrics:', err);
+//       }
+
+//       const visualizationArray = new Uint8Array(bufferLength);
+//       analyserNode.getByteFrequencyData(visualizationArray);
+
+//       ctx.clearRect(0, 0, canvas.width, canvas.height);
+//       const barWidth = canvas.width / bufferLength;
+//       let x = 0;
+
+//       for (let i = 0; i < bufferLength; i++) {
+//         const barHeight = visualizationArray[i];
+//         ctx.fillStyle = `rgb(${barHeight + 100}, 50, 50)`;
+//         ctx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight / 2);
+//         x += barWidth;
+//       }
+//     };
+
+//     draw();
+//   };
+
+//   useEffect(() => {
+//     const handleMessage = (event) => {
+//       try {
+//         const data = JSON.parse(event.data);
+//         if (data.type === 'audioLoaded' && audioRef.current) {
+//           const audioUrl = data.audioUrl;
+//           audioRef.current.src = audioUrl;
+//           audioRef.current.play();
+//           setupAudio(audioUrl);
+//         }
+//       } catch (err) {
+//         console.error('Error processing message:', err);
+//       }
+//     };
+
+//     window.addEventListener('message', handleMessage);
+
+//     return () => {
+//       window.removeEventListener('message', handleMessage);
+//       cleanupAudioNodes();
+//     };
+//   }, []);
+
+//   return (
+//     <div className="analyzer-app">
+//       <canvas ref={canvasRef} width={800} height={200} style={{ backgroundColor: '#000' }} />
+//       <audio ref={audioRef} crossOrigin="anonymous" />
+//     </div>
+//   );
+// }
+
+// export default App;
+
+
+
 import React, { useEffect, useRef, useState } from 'react';
 
 function App() {
@@ -1028,6 +1142,7 @@ function App() {
   const [audioContext, setAudioContext] = useState(null);
   const [analyser, setAnalyser] = useState(null);
   const animationRef = useRef(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   const cleanupAudioNodes = () => {
     if (audioContext) {
@@ -1053,6 +1168,7 @@ function App() {
   };
 
   const setupAudio = (audioUrl) => {
+    // Cleanup previous audio context
     if (audioContext) {
       cleanupAudioNodes();
     }
@@ -1071,14 +1187,28 @@ function App() {
     const ctx = canvas.getContext('2d');
     const bufferLength = analyserNode.frequencyBinCount;
 
+    // Track playing state
+    setIsPlaying(true);
+
     const draw = () => {
+      // Stop drawing if audio is not playing or has ended
+      if (!isPlaying || audioRef.current.ended) {
+        cancelAnimationFrame(animationRef.current);
+        setIsPlaying(false);
+        return;
+      }
+
       animationRef.current = requestAnimationFrame(draw);
 
       const metrics = calculateMetrics(analyserNode);
-      try {
-        window.ReactNativeWebView.postMessage(JSON.stringify(metrics));
-      } catch (err) {
-        console.error('Failed to post metrics:', err);
+      
+      // Only send metrics if they are meaningful
+      if (metrics.amplitude > 0) {
+        try {
+          window.ReactNativeWebView.postMessage(JSON.stringify(metrics));
+        } catch (err) {
+          console.error('Failed to post metrics:', err);
+        }
       }
 
       const visualizationArray = new Uint8Array(bufferLength);
@@ -1096,6 +1226,12 @@ function App() {
       }
     };
 
+    // Add event listeners for audio state
+    audioRef.current.addEventListener('ended', () => {
+      setIsPlaying(false);
+      cancelAnimationFrame(animationRef.current);
+    });
+
     draw();
   };
 
@@ -1103,11 +1239,34 @@ function App() {
     const handleMessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        
         if (data.type === 'audioLoaded' && audioRef.current) {
           const audioUrl = data.audioUrl;
+          
+          // Reset audio context if it exists
+          if (audioContext) {
+            cleanupAudioNodes();
+          }
+          
           audioRef.current.src = audioUrl;
-          audioRef.current.play();
-          setupAudio(audioUrl);
+          audioRef.current.play()
+            .then(() => {
+              setupAudio(audioUrl);
+            })
+            .catch(err => {
+              console.error('Play error:', err);
+            });
+        } else if (data.type === 'audioAction') {
+          switch (data.action) {
+            case 'stop':
+              if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current.currentTime = 0;
+                setIsPlaying(false);
+                cancelAnimationFrame(animationRef.current);
+              }
+              break;
+          }
         }
       } catch (err) {
         console.error('Error processing message:', err);
@@ -1120,12 +1279,20 @@ function App() {
       window.removeEventListener('message', handleMessage);
       cleanupAudioNodes();
     };
-  }, []);
+  }, [audioContext]);
 
   return (
     <div className="analyzer-app">
-      <canvas ref={canvasRef} width={800} height={200} style={{ backgroundColor: '#000' }} />
-      <audio ref={audioRef} crossOrigin="anonymous" />
+      <canvas 
+        ref={canvasRef} 
+        width={800} 
+        height={200} 
+        style={{ backgroundColor: '#000' }} 
+      />
+      <audio 
+        ref={audioRef} 
+        crossOrigin="anonymous" 
+      />
     </div>
   );
 }
